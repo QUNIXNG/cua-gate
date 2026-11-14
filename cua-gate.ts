@@ -34,8 +34,8 @@ function runtimeFile(): string {
 const STATE_FILE = process.env.CUA_GATE_STATE || join(homedir(), ".pi", "agent", "lib", "cua-gate", "state.json");
 
 const PARAMS = Type.Object({
-	action: StringEnum(["once", "watch", "scan", "tap", "probe", "region"] as const, {
-		description: "once=判一帧（默认）；watch=连续判；scan=两遍扫描拼缩略表；tap=发输入；probe=探端点；region=像素框换算",
+	action: StringEnum(["once", "watch", "live", "scan", "tap", "probe", "region"] as const, {
+		description: "once=判一帧（默认）；watch=连续判；live=持续采集并返回变化拼图；scan=扫描缩略表；tap=发输入；probe=探端点；region=像素框换算",
 		default: "once",
 	}),
 	profile: Type.Optional(
@@ -75,6 +75,10 @@ const PARAMS = Type.Object({
 	acc: Type.Optional(Type.Number({ description: "覆盖阈值：积分门槛 accNeed（标定用）" })),
 	cooldown: Type.Optional(Type.Number({ description: "覆盖阈值：出帧冷却（秒，标定用）" })),
 	burst: Type.Optional(Type.Number({ description: "覆盖阈值：burstWindow 内最多连出几张（标定用）" })),
+	stop: Type.Optional(Type.Boolean({ description: "live：停止持续采集，释放 ffmpeg 进程" })),
+	scene: Type.Optional(Type.Boolean({ description: "live：逐场景出图，每张一帧" })),
+	quality: Type.Optional(StringEnum(["low", "standard", "high", "ultra"] as const, { description: "live：清晰度，默认 low（798 宽，42px 对齐）" })),
+	pace: Type.Optional(StringEnum(["normal", "dense", "calm", "action"] as const, { description: "live：出图节奏，默认 normal" })),
 	burstWindow: Type.Optional(Type.Number({ description: "覆盖阈值：burst 窗口（秒，标定用）" })),
 	silentFloor: Type.Optional(Type.Number({ description: "覆盖阈值：静默兜底（秒，标定用）" })),
 	maxWait: Type.Optional(Type.Number({ description: "覆盖阈值：最长等待（秒，标定用）" })),
@@ -135,6 +139,7 @@ function buildArgs(p: Params, cwd: string): string[] {
 }
 
 function timeoutFor(p: Params): number {
+	if (p.action === "live") return (Math.min(p.duration ?? 30, 120) + 30) * 1000;
 	if (p.action === "watch") return ((p.duration ?? 30) + 30) * 1000;
 	if (p.action === "scan") return ((p.duration ?? 12) * 3 + 120) * 1000;
 	if (p.action === "probe") return 30_000;
@@ -184,22 +189,43 @@ function run(
 }
 
 export default function cuaGateExtension(pi: ExtensionAPI) {
+	pi.on("session_shutdown", async () => {
+		const { stopLive } = await import("./live.mjs");
+		stopLive();
+	});
 	pi.registerTool({
 		name: "cua_look",
 		label: "Look at screen (cua-gate)",
 		description:
 			"看当前屏幕：截一帧按「变化积分 + 尖峰 + 冷却」判值不值得看，值得才返回；也能对一段视频/几个时间点采样成缩略表。返回 JSON。",
 		promptSnippet:
-			"cua_look — 判当前屏幕这一帧值不值得看（once/watch/scan/tap/probe/region），省掉盲抓图的浪费",
+			"cua_look — 判当前屏幕这一帧值不值得看（once/watch/live/scan/tap/probe/region），省掉盲抓图的浪费",
 		promptGuidelines: [
 			"用 cua_look 而不是随手截全屏：它先本地打分，verdict=skip 就别再抓图。",
 			"cua_look 的 once 返回 verdict=keep 时才值得取图（加 out 落盘），skip 说明画面没实质变化。",
 			"要看视频/网页里「哪一段有意思」用 cua_look 的 action=scan，别自己抽帧拼图。",
+			"持续看屏用 cua_look action=live：等待变化并返回拼图路径；再次调用继续等，stop=true 结束采集。不要在同一回合盲目连调。",
 			"cua_look 的 tap 能发键盘/鼠标（绕开 PiDeck 注入失效的那条路），回看视频用 tap 跳进度。",
 		],
 		parameters: PARAMS,
 		async execute(_toolCallId, params, signal, _onUpdate, ctx) {
 			const p = params as Params;
+			if (p.action === "live") {
+				const { runLive } = await import("./live.mjs");
+				const args: string[] = [];
+				if (p.stop) args.push("--stop");
+				else if (p.stats) args.push("--status");
+				else {
+					args.push("--seconds", String(Math.min(p.duration ?? 30, 120)));
+					if (p.region) args.push("--region", p.region);
+					if (p.quality) args.push("--quality", p.quality);
+					if (p.pace) args.push("--pace", p.pace);
+					if (p.scene) args.push("--scene");
+					if (p.out) args.push("--out", isAbsolute(p.out) ? p.out : resolve(ctx.cwd, p.out));
+				}
+				const result = await runLive(args);
+				return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }], details: result };
+			}
 			const script = runtimeFile();
 			const args = buildArgs(p, ctx.cwd);
 			const result = await run(script, args, ctx.cwd, timeoutFor(p), signal);

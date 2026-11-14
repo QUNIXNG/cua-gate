@@ -4,3 +4,4 @@ state.json
 *.png
 *.jpg
 *.jpeg
+node_modules/
