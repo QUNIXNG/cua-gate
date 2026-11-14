@@ -1,5 +1,8 @@
 # cua-gate
 
+
+- 当前：`v0.1.0`
+- 最新：`v0.1.0`（[Releases](https://github.com/QUNIXNG/cua-gate/releases)）
 Pi 扩展：注册 `cua_look` 工具，在截图、连续屏幕观察和视频采样前先做本地变化评分，避免把没有实质变化的画面反复送入模型。
 
 ## 功能
