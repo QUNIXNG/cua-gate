@@ -1,0 +1,20 @@
+{
+  "name": "cua-gate",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Pi extension",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/QUNIXNG/cua-gate.git"
+  },
+  "homepage": "https://github.com/QUNIXNG/cua-gate#readme",
+  "bugs": {
+    "url": "https://github.com/QUNIXNG/cua-gate/issues"
+  },
+  "pi": {
+    "extensions": [
+      "./cua-gate.ts"
+    ]
+  }
+}
