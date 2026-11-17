@@ -6,7 +6,7 @@
 
 ## 上游
 
-`live` 的持续采集、变化选帧与拼图功能复用上游 [SAOS-3624/dsh-see-now](https://github.com/SAOS-3624/dsh-see-now)（Apache-2.0）的模块。依赖锁定在提交 `8402943`；升级时跟随上游并核对 runner 接口。悬浮窗、语音和 DSH 宿主集成不属于本扩展的使用范围。
+`live` 的持续采集、变化选帧与拼图功能复用上游 [SAOS-3624/dsh-see-now](https://github.com/SAOS-3624/dsh-see-now)（Apache-2.0）的模块。依赖为 npm 上的 `dsh-see-now@^0.2.4`；悬浮窗用上游 0.2.4 起支持的环境变量 `DSH_SEE_NO_WINDOW=1` 关闭，不再依赖私有 fork。升级时跟随上游并核对 runner 接口。悬浮窗、语音和 DSH 宿主集成不属于本扩展的使用范围。
 Pi 扩展：注册 `cua_look` 工具，在截图、连续屏幕观察和视频采样前先做本地变化评分，避免把没有实质变化的画面反复送入模型。
 
 ## 功能

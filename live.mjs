@@ -6,6 +6,9 @@ import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 
 const require = createRequire(import.meta.url);
+// 上游 0.2.4 起用 DSH_SEE_NO_WINDOW=1 关闭悬浮窗（取代旧 fork 的 floatingWindow 选项），
+// 必须在 runner 启动前设好：window.js 在 openWindow/windowPidAlive 里读这个环境变量。
+process.env.DSH_SEE_NO_WINDOW = "1";
 const { createRunner, PACES } = require("dsh-see-now/runner");
 const packageRoot = dirname(require.resolve("dsh-see-now/package.json"));
 const { parseRegion } = require(join(packageRoot, "src", "layout.js"));
@@ -21,7 +24,7 @@ export function stopLive() {
 }
 
 function getRunner() {
-	if (!runner) runner = createRunner({ ffmpegPath: resolveFfmpeg().path, graceSec: 600, floatingWindow: false, audio: false });
+	if (!runner) runner = createRunner({ ffmpegPath: resolveFfmpeg().path, graceSec: 600 });
 	return runner;
 }
 

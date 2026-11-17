@@ -1,6 +1,6 @@
 {
   "name": "cua-gate",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "private": true,
   "type": "module",
   "description": "Pi extension",
@@ -18,6 +18,6 @@
     ]
   },
   "dependencies": {
-    "dsh-see-now": "github:QUNIXNG/dsh-see-now#89a5797"
+    "dsh-see-now": "^0.2.4"
   }
 }
